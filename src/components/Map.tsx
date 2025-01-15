@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import L from 'leaflet';
+import dynamic from 'next/dynamic';
+import type { Map as LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { PhotoData } from '@/lib/photoUtils';
 
@@ -11,16 +12,24 @@ interface MapProps {
   className?: string;
 }
 
-export default function Map({ photos, onPhotoSelect, className = '' }: MapProps) {
-  const mapRef = useRef<L.Map | null>(null);
+// Dynamically import Leaflet with no SSR
+const Map = ({ photos, onPhotoSelect, className = '' }: MapProps) => {
+  const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (typeof window === 'undefined' || !mapContainerRef.current || mapRef.current) return;
 
-    // Initialize map
-    mapRef.current = L.map(mapContainerRef.current).setView([51.505, -0.09], 13);
+    // Dynamic import of Leaflet
+    import('leaflet').then((L) => {
+      mapRef.current = L.map(mapContainerRef.current).setView([51.505, -0.09], 13);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(mapRef.current);
+    });
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -35,6 +44,11 @@ export default function Map({ photos, onPhotoSelect, className = '' }: MapProps)
         mapRef.current = null;
       }
     };
+
+// Export with no SSR
+export default dynamic(() => Promise.resolve(Map), {
+  ssr: false
+});
   }, []);
 
   // Update markers when photos change

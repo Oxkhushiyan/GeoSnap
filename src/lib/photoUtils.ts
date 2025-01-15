@@ -1,4 +1,7 @@
-import EXIF from 'exif-js';
+let EXIF: any;
+if (typeof window !== 'undefined') {
+  EXIF = require('exif-js');
+}
 
 export interface PhotoData {
   url: string;
